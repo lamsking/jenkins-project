@@ -2,7 +2,7 @@
 
 pipeline {
     environment {
-        IMAGE_NAME = 'webapp'
+        IMAGE_NAME = 'appweb'
         IMAGE_TAG = 'v1'
         DOCKER_PASSWORD = credentials('docker-password')
         DOCKER_USERNAME = 'lamsking'
