@@ -55,7 +55,7 @@ pipeline {
 
         stage('Deploy Review') {
             environment {
-                SERVER_IP       = '98.80.192.5'
+                SERVER_IP       = '54.162.185.217'
                 SERVER_USERNAME = 'ubuntu'
             }
             steps {
@@ -86,7 +86,7 @@ pipeline {
 
         stage('Deploy Staging') {
             environment {
-                SERVER_IP       = '44.201.60.81'
+                SERVER_IP       = '54.91.178.230'
                 SERVER_USERNAME = 'ubuntu'
             }
             steps {
@@ -117,7 +117,7 @@ pipeline {
 
         stage('Deploy Prod') {
             environment {
-                SERVER_IP       = '3.231.22.222'
+                SERVER_IP       = '34.224.101.165'
                 SERVER_USERNAME = 'ubuntu'
             }
             steps {
