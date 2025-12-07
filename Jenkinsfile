@@ -22,7 +22,7 @@ pipeline {
         */
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/lamsking/jenkins-project.git', branch: 'main'
+                git url: 'https://github.com/lamsking/jenkins-project.git', branch: 'main' ,credentialsId: 'github-creds'
             }
         }
 
