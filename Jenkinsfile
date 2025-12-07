@@ -77,15 +77,15 @@ pipeline {
                             echo \$DOCKER_PASSWORD | docker login -u \$DOCKER_USERNAME --password-stdin
 
                             # Supprimer l'ancien conteneur (ignore si inexistant)
-                            ssh -o StrictHostKeyChecking=no -l \$SERVER_USERNAME \$SERVER_IP "\$DOCKER_CMD rm -f \$IMAGE_NAME || echo 'All deleted'"
+                            ssh -o StrictHostKeyChecking=no -l \$SERVER_USERNAME \$SERVER_IP "sudo docker rm -f \$IMAGE_NAME || echo 'All deleted'"
 
                             # Télécharger la nouvelle image
-                            ssh -o StrictHostKeyChecking=no -l \$SERVER_USERNAME \$SERVER_IP "\$DOCKER_CMD pull \$DOCKER_USERNAME/\$IMAGE_NAME:\$IMAGE_TAG || echo 'Image Download successfully'"
+                            ssh -o StrictHostKeyChecking=no -l \$SERVER_USERNAME \$SERVER_IP "sudo docker pull \$DOCKER_USERNAME/\$IMAGE_NAME:\$IMAGE_TAG || echo 'Image Download successfully'"
 
                             sleep 10
 
                             # Lancer le conteneur
-                            ssh -o StrictHostKeyChecking=no -l \$SERVER_USERNAME \$SERVER_IP "\$DOCKER_CMD run --rm -dp \$HOST_PORT:\$CONTAINER_PORT --name \$IMAGE_NAME \$DOCKER_USERNAME/\$IMAGE_NAME:\$IMAGE_TAG"
+                            ssh -o StrictHostKeyChecking=no -l \$SERVER_USERNAME \$SERVER_IP "sudo docker run --rm -dp \$HOST_PORT:\$CONTAINER_PORT --name \$IMAGE_NAME \$DOCKER_USERNAME/\$IMAGE_NAME:\$IMAGE_TAG"
 
                             sleep 5
 
