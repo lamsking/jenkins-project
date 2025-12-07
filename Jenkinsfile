@@ -3,26 +3,23 @@
 pipeline {
 
     environment {
-        IMAGE_NAME     = 'appweb'
-        IMAGE_TAG      = 'v1'
-        DOCKER_PASSWORD = credentials('docker-password')
-        DOCKER_USERNAME = 'lamsking'
-        HOST_PORT       = 80
-        CONTAINER_PORT  = 80
-        IP_DOCKER       = 'host.docker.internal'
+        IMAGE_NAME       = 'appweb'
+        IMAGE_TAG        = 'v1'
+        DOCKER_PASSWORD  = credentials('docker-password')
+        DOCKER_USERNAME  = 'lamsking'
+        HOST_PORT        = 80
+        CONTAINER_PORT   = 80
+        IP_DOCKER        = 'host.docker.internal'
     }
 
     agent any
 
     stages {
 
-        /*
-        * --- NEW STAGE ADDED HERE ---
-        * Mandatory to avoid "fatal: not in a git directory"
-        */
+        // --- Checkout stage to avoid "fatal: not in a git directory"
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/lamsking/jenkins-project.git', branch: 'main' ,credentialsId: 'github-creds'
+                git url: 'https://github.com/lamsking/jenkins-project.git', branch: 'main', credentialsId: 'github-creds'
             }
         }
 
@@ -66,6 +63,7 @@ pipeline {
             environment {
                 SERVER_IP       = '54.162.185.217'
                 SERVER_USERNAME = 'ubuntu'
+                DOCKER_CMD      = 'sudo docker' // Utiliser sudo si nécessaire
             }
             steps {
                 script {
@@ -74,51 +72,26 @@ pipeline {
                     }
 
                     sshagent(['key-pair']) {
-                        sh '''
-                            echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+                        sh """
+                            # Connexion Docker sur Jenkins
+                            echo \$DOCKER_PASSWORD | docker login -u \$DOCKER_USERNAME --password-stdin
 
-                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker rm -f $IMAGE_NAME || echo 'All deleted'"
-                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker pull $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG || echo 'Image Download successfully'"
+                            # Supprimer l'ancien conteneur (ignore si inexistant)
+                            ssh -o StrictHostKeyChecking=no -l \$SERVER_USERNAME \$SERVER_IP "\$DOCKER_CMD rm -f \$IMAGE_NAME || echo 'All deleted'"
 
-                            sleep 30
+                            # Télécharger la nouvelle image
+                            ssh -o StrictHostKeyChecking=no -l \$SERVER_USERNAME \$SERVER_IP "\$DOCKER_CMD pull \$DOCKER_USERNAME/\$IMAGE_NAME:\$IMAGE_TAG || echo 'Image Download successfully'"
 
-                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP \
-                            "docker run --rm -dp $HOST_PORT:$CONTAINER_PORT --name $IMAGE_NAME $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG"
+                            sleep 10
 
-                            sleep 5
-                            curl -I http://$SERVER_IP:$HOST_PORT
-                        '''
-                    }
-                }
-            }
-        }
-
-        stage('Deploy Staging') {
-            environment {
-                SERVER_IP       = '54.91.178.230'
-                SERVER_USERNAME = 'ubuntu'
-            }
-            steps {
-                script {
-                    timeout(time: 30, unit: "MINUTES") {
-                        input message: "Voulez-vous réaliser un déploiement sur l'environnement de staging ?", ok: 'Yes'
-                    }
-
-                    sshagent(['key-pair']) {
-                        sh '''
-                            echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-
-                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker rm -f $IMAGE_NAME || echo 'All deleted'"
-                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker pull $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG || echo 'Image Download successfully'"
-
-                            sleep 30
-
-                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP \
-                            "docker run --rm -dp $HOST_PORT:$CONTAINER_PORT --name $IMAGE_NAME $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG"
+                            # Lancer le conteneur
+                            ssh -o StrictHostKeyChecking=no -l \$SERVER_USERNAME \$SERVER_IP "\$DOCKER_CMD run --rm -dp \$HOST_PORT:\$CONTAINER_PORT --name \$IMAGE_NAME \$DOCKER_USERNAME/\$IMAGE_NAME:\$IMAGE_TAG"
 
                             sleep 5
-                            curl -I http://$SERVER_IP:$HOST_PORT
-                        '''
+
+                            # Tester l'accès
+                            curl -I http://\$SERVER_IP:\$HOST_PORT
+                        """
                     }
                 }
             }
@@ -144,8 +117,7 @@ pipeline {
 
                             sleep 30
 
-                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP \
-                            "docker run --rm -dp $HOST_PORT:$CONTAINER_PORT --name $IMAGE_NAME $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG"
+                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker run --rm -dp $HOST_PORT:$CONTAINER_PORT --name $IMAGE_NAME $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG"
 
                             sleep 5
                             curl -I http://$SERVER_IP:$HOST_PORT
