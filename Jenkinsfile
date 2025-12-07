@@ -9,13 +9,22 @@ pipeline {
         DOCKER_USERNAME = 'lamsking'
         HOST_PORT       = 80
         CONTAINER_PORT  = 80
-        //IP_DOCKER       = '172.17.0.1'
-        IP_DOCKER    = 'host.docker.internal'
+        IP_DOCKER       = 'host.docker.internal'
     }
 
     agent any
 
     stages {
+
+        /*
+        * --- NEW STAGE ADDED HERE ---
+        * Mandatory to avoid "fatal: not in a git directory"
+        */
+        stage('Checkout') {
+            steps {
+                git url: 'https://github.com/lamsking/jenkins-project.git', branch: 'main'
+            }
+        }
 
         stage('Build') {
             steps {
