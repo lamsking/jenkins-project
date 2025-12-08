@@ -111,8 +111,10 @@ pipeline {
                             sleep 30
                             ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker run --rm -dp $HOST_PORT:$CONTAINER_PORT --name $IMAGE_NAME $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG"
                             sleep 5
-                            curl -I http://$SERVER_IP:$HOST_PORT
-                        '''
+
+                            # Tester l'accès
+                            curl -I http://\$SERVER_IP:\$HOST_PORT
+                        """
                     }
                 }
             }
@@ -130,13 +132,17 @@ pipeline {
                     timeout(time: 30, unit: "MINUTES") {
                         input message: "Voulez-vous réaliser un déploiement sur l'environnement de production ?", ok: 'Yes'
                     }
+
                     sshagent(['key-pair']) {
                         sh '''
                             echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+
                             ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker rm -f $IMAGE_NAME || echo 'All deleted'"
                             ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker pull $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG || echo 'Image Downloaded successfully'"
                             sleep 30
+
                             ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker run --rm -dp $HOST_PORT:$CONTAINER_PORT --name $IMAGE_NAME $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG"
+
                             sleep 5
                             curl -I http://$SERVER_IP:$HOST_PORT
                         '''
