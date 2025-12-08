@@ -16,7 +16,7 @@ pipeline {
 
     stages {
 
-        // --- CHECKOUT ---
+        /* ---------------------- CHECKOUT ---------------------- */
         stage('Checkout') {
             steps {
                 git url: 'https://github.com/lamsking/jenkins-project.git',
@@ -25,7 +25,7 @@ pipeline {
             }
         }
 
-        // --- BUILD ---
+        /* ---------------------- BUILD ---------------------- */
         stage('Build') {
             steps {
                 script {
@@ -36,22 +36,25 @@ pipeline {
             }
         }
 
-        // --- TEST ---
+        /* ---------------------- TEST ---------------------- */
         stage('Test') {
             steps {
                 script {
                     sh '''
-                        docker run --rm -dp $HOST_PORT:$CONTAINER_PORT --name $IMAGE_NAME $IMAGE_NAME:$IMAGE_TAG
+                        docker run --rm -dp $HOST_PORT:$CONTAINER_PORT \
+                            --name $IMAGE_NAME $IMAGE_NAME:$IMAGE_TAG
+
                         sleep 5
                         curl -I http://$IP_DOCKER
                         sleep 5
+
                         docker stop $IMAGE_NAME
                     '''
                 }
             }
         }
 
-        // --- RELEASE ---
+        /* ---------------------- RELEASE ---------------------- */
         stage('Release') {
             steps {
                 script {
@@ -64,25 +67,35 @@ pipeline {
             }
         }
 
-        // --- DEPLOY REVIEW ---
+        /* ---------------------- DEPLOY REVIEW ---------------------- */
         stage('Deploy Review') {
             environment {
                 SERVER_IP       = '98.93.63.247'
                 SERVER_USERNAME = 'ubuntu'
-                DOCKER_CMD      = 'sudo docker' // Utiliser sudo si nécessaire
+                DOCKER_CMD      = 'sudo docker'
             }
             steps {
                 script {
                     timeout(time: 30, unit: "MINUTES") {
-                        input message: "Voulez-vous réaliser un déploiement sur l'environnement de review ?", ok: 'Yes'
+                        input message: "Déployer sur l'environnement REVIEW ?", ok: 'Yes'
                     }
+
                     sshagent(['key-pair']) {
                         sh '''
                             echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker rm -f $IMAGE_NAME || echo 'All deleted'"
-                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker pull $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG || echo 'Image Downloaded successfully'"
+
+                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP \
+                                "$DOCKER_CMD rm -f $IMAGE_NAME || echo 'All deleted'"
+
+                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP \
+                                "$DOCKER_CMD pull $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG || echo 'Image downloaded'"
+
                             sleep 30
-                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker run --rm -dp $HOST_PORT:$CONTAINER_PORT --name $IMAGE_NAME $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG"
+
+                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP \
+                                "$DOCKER_CMD run --rm -dp $HOST_PORT:$CONTAINER_PORT --name $IMAGE_NAME \
+                                $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG"
+
                             sleep 5
                             curl -I http://$SERVER_IP:$HOST_PORT
                         '''
@@ -91,57 +104,71 @@ pipeline {
             }
         }
 
-        // --- DEPLOY STAGING ---
+        /* ---------------------- DEPLOY STAGING ---------------------- */
         stage('Deploy Staging') {
             environment {
                 SERVER_IP       = '3.93.197.9'
                 SERVER_USERNAME = 'ubuntu'
-                DOCKER_CMD      = 'sudo docker' // Utiliser sudo si nécessaire
+                DOCKER_CMD      = 'sudo docker'
             }
             steps {
                 script {
                     timeout(time: 30, unit: "MINUTES") {
-                        input message: "Voulez-vous réaliser un déploiement sur l'environnement de staging ?", ok: 'Yes'
+                        input message: "Déployer sur l'environnement STAGING ?", ok: 'Yes'
                     }
+
                     sshagent(['key-pair']) {
                         sh '''
                             echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker rm -f $IMAGE_NAME || echo 'All deleted'"
-                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker pull $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG || echo 'Image Downloaded successfully'"
-                            sleep 30
-                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker run --rm -dp $HOST_PORT:$CONTAINER_PORT --name $IMAGE_NAME $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG"
-                            sleep 5
 
-                            # Tester l'accès
-                            curl -I http://\$SERVER_IP:\$HOST_PORT
-                        """
+                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP \
+                                "$DOCKER_CMD rm -f $IMAGE_NAME || echo 'All deleted'"
+
+                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP \
+                                "$DOCKER_CMD pull $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG || echo 'Image downloaded'"
+
+                            sleep 30
+
+                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP \
+                                "$DOCKER_CMD run --rm -dp $HOST_PORT:$CONTAINER_PORT --name $IMAGE_NAME \
+                                $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG"
+
+                            sleep 5
+                            curl -I http://$SERVER_IP:$HOST_PORT
+                        '''
                     }
                 }
             }
         }
 
-        // --- DEPLOY PROD ---
+        /* ---------------------- DEPLOY PROD ---------------------- */
         stage('Deploy Prod') {
             environment {
                 SERVER_IP       = '54.91.41.168'
                 SERVER_USERNAME = 'ubuntu'
-                DOCKER_CMD      = 'sudo docker' // Utiliser sudo si nécessaire
+                DOCKER_CMD      = 'sudo docker'
             }
             steps {
                 script {
                     timeout(time: 30, unit: "MINUTES") {
-                        input message: "Voulez-vous réaliser un déploiement sur l'environnement de production ?", ok: 'Yes'
+                        input message: "Déployer sur l'environnement PROD ?", ok: 'Yes'
                     }
 
                     sshagent(['key-pair']) {
                         sh '''
                             echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
 
-                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker rm -f $IMAGE_NAME || echo 'All deleted'"
-                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker pull $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG || echo 'Image Downloaded successfully'"
+                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP \
+                                "$DOCKER_CMD rm -f $IMAGE_NAME || echo 'All deleted'"
+
+                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP \
+                                "$DOCKER_CMD pull $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG || echo 'Image downloaded'"
+
                             sleep 30
 
-                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker run --rm -dp $HOST_PORT:$CONTAINER_PORT --name $IMAGE_NAME $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG"
+                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP \
+                                "$DOCKER_CMD run --rm -dp $HOST_PORT:$CONTAINER_PORT --name $IMAGE_NAME \
+                                $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG"
 
                             sleep 5
                             curl -I http://$SERVER_IP:$HOST_PORT
