@@ -1,20 +1,31 @@
 @Library('lamsking-library')_
 
 pipeline {
+
     environment {
-        IMAGE_NAME = 'appweb'
-        IMAGE_TAG = 'v1'
+        IMAGE_NAME      = 'appweb'
+        IMAGE_TAG       = 'v1'
         DOCKER_PASSWORD = credentials('docker-password')
         DOCKER_USERNAME = 'lamsking'
-        HOST_PORT = 80
-        CONTAINER_PORT = 80
-        IP_DOCKER = '172.17.0.1'
-        //IP_DOCKER = 'host.docker.internal'
+        HOST_PORT       = 80
+        CONTAINER_PORT  = 80
+        IP_DOCKER       = 'host.docker.internal'
     }
-    
-    agent any 
-    
+
+    agent any
+
     stages {
+
+        // --- CHECKOUT ---
+        stage('Checkout') {
+            steps {
+                git url: 'https://github.com/lamsking/jenkins-project.git',
+                    branch: 'main',
+                    credentialsId: 'github-creds'
+            }
+        }
+
+        // --- BUILD ---
         stage('Build') {
             steps {
                 script {
@@ -25,6 +36,7 @@ pipeline {
             }
         }
 
+        // --- TEST ---
         stage('Test') {
             steps {
                 script {
@@ -39,6 +51,7 @@ pipeline {
             }
         }
 
+        // --- RELEASE ---
         stage('Release') {
             steps {
                 script {
@@ -51,10 +64,12 @@ pipeline {
             }
         }
 
+        // --- DEPLOY REVIEW ---
         stage('Deploy Review') {
             environment {
-                SERVER_IP = '98.80.192.5'
+                SERVER_IP       = '98.93.63.247'
                 SERVER_USERNAME = 'ubuntu'
+                DOCKER_CMD      = 'sudo docker' // Utiliser sudo si nécessaire
             }
             steps {
                 script {
@@ -65,7 +80,7 @@ pipeline {
                         sh '''
                             echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
                             ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker rm -f $IMAGE_NAME || echo 'All deleted'"
-                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker pull $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG || echo 'Image Download successfully'"
+                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker pull $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG || echo 'Image Downloaded successfully'"
                             sleep 30
                             ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker run --rm -dp $HOST_PORT:$CONTAINER_PORT --name $IMAGE_NAME $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG"
                             sleep 5
@@ -76,10 +91,12 @@ pipeline {
             }
         }
 
+        // --- DEPLOY STAGING ---
         stage('Deploy Staging') {
             environment {
-                SERVER_IP = '44.201.60.81'
+                SERVER_IP       = '3.93.197.9'
                 SERVER_USERNAME = 'ubuntu'
+                DOCKER_CMD      = 'sudo docker' // Utiliser sudo si nécessaire
             }
             steps {
                 script {
@@ -90,7 +107,7 @@ pipeline {
                         sh '''
                             echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
                             ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker rm -f $IMAGE_NAME || echo 'All deleted'"
-                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker pull $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG || echo 'Image Download successfully'"
+                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker pull $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG || echo 'Image Downloaded successfully'"
                             sleep 30
                             ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker run --rm -dp $HOST_PORT:$CONTAINER_PORT --name $IMAGE_NAME $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG"
                             sleep 5
@@ -101,11 +118,12 @@ pipeline {
             }
         }
 
+        // --- DEPLOY PROD ---
         stage('Deploy Prod') {
-            // when {expression {GIT_BRANCH == 'origin/prod'}}
             environment {
-                SERVER_IP = '3.231.22.222'
+                SERVER_IP       = '54.91.41.168'
                 SERVER_USERNAME = 'ubuntu'
+                DOCKER_CMD      = 'sudo docker' // Utiliser sudo si nécessaire
             }
             steps {
                 script {
@@ -116,7 +134,7 @@ pipeline {
                         sh '''
                             echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
                             ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker rm -f $IMAGE_NAME || echo 'All deleted'"
-                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker pull $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG || echo 'Image Download successfully'"
+                            ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker pull $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG || echo 'Image Downloaded successfully'"
                             sleep 30
                             ssh -o StrictHostKeyChecking=no -l $SERVER_USERNAME $SERVER_IP "docker run --rm -dp $HOST_PORT:$CONTAINER_PORT --name $IMAGE_NAME $DOCKER_USERNAME/$IMAGE_NAME:$IMAGE_TAG"
                             sleep 5
